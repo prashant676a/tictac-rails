@@ -9,5 +9,5 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   # root "posts#index"
   get "/" => "game#index"
-  # get "/change" => "game#change"
+  get "/newgame" => "game#newgame"
 end

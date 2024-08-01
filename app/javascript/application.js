@@ -1,23 +1,44 @@
 // Configure your import map in config/importmap.rb. Read more: https://github.com/rails/importmap-rails
 import "@hotwired/turbo-rails"
 import "controllers"
-
 import jquery from "jquery"
 window.jQuery = jquery
 window.$ = jquery
 
+
+let pollingInterval;
 $(
-    ()=>{
+    ()=>{ //can write jquery from here only: after every element loaded
+
+        //function for polling states every 2 second
+        function fetchGameState() {
+            $.getJSON("/", (data)=>{
+                
+                data.board.forEach((value,index) => {
+                    $(`#${index}`).text(value); //update each cell
+                });
+
+                $("#turn").text(data.turn); //turn display
+
+                if(data.won){
+                    // $("h4").text(`Game Over. Won by ${data.won}`)
+                    $("h4").text(`Game Over. Won by ${data.won}`);
+                    $("#board").off("click"); // Disable further clicks on the board
+                    clearInterval(pollingInterval) //stop polling on gameover;
+                }
+            })
+        }
+
+        pollingInterval = setInterval(fetchGameState, 2000); //poll every 2 sec
+
+
         $("#board").on("click", (e) => {
 
-            let turn = $("#turn").html();
+            let turn = $("#turn").html(); 
 
-            // console.log($(`#${e.target.id}`).html() == false)
 
             if ($(`#${e.target.id}`).html() == false)
             {
-                // console.log("...requesting....");
-                // console.log(e.target.id);
                 $.getJSON("/", 
                 {turn : turn ,position: e.target.id},
                 (success) => { //success is json returned
@@ -25,8 +46,9 @@ $(
                     turn = success.turn
                     $("#turn").text(turn) //update turn
                     
-                    if (check_game()){
-                        $("h4").text("Game Over")
+                    if (success.won){
+                        $("h4").text(`Game Over. Won by ${success.won}`);
+                        clearInterval(pollingInterval);
                     }
                 }
             )
@@ -34,35 +56,21 @@ $(
             }
         })
 
+        //handle "play new game button"
+        $("#button").on("click",()=>{
+            $.getJSON("/newgame", (data) => {
 
-        //check game condition
-        function check_game(){
-            if (
-                $("#0").html() != '' && $("#0").html() == $("#1").html() && $("#0").html() == $("#2").html()
-                || $("#3").html() != '' && $("#3").html() == $("#4").html() && $("#3").html() == $("#5").html()
-                || $("#6").html() != '' && $("#6").html() == $("#7").html() && $("#6").html() == $("#8").html()
-            ){
-                    return true
-            }
-            else if (
-                $("#0").html() != '' && $("#0").html() == $("#3").html() && $("#0").html() == $("#6").html()
-                || $("#1").html() != '' && $("#1").html() == $("#4").html() && $("#4").html() == $("#7").html()
-                || $("#2").html() != '' && $("#2").html() == $("#5").html() && $("#5").html() == $("#8").html()
-                )
-                {
-                    return true
-                }
+                data.board.forEach((value, index) =>{
+                    $(`#${index}`).text(value); //updated each cell to nil
+                })
 
-            else if (
-                $("#0").html() != '' && $("#0").html() == $("#4").html() && $("#0").html() == $("#8").html()
-                || $("#2").html() != '' && $("#2").html() == $("#4").html() && $("#4").html() == $("#6").html()
-            ){
-                return true
-            }
-            else{
-                return false
-            }
-        }
+                $("h4").html(`<span id="turn">${data.turn}</span>'s turn`) //display
+                // $("#turn").text(data.turn); //display
 
-    }
-);
+                // Restart polling after starting a new game
+                clearInterval(pollingInterval);
+                pollingInterval = setInterval(fetchGameState, 2000);
+
+            })
+        })
+});
