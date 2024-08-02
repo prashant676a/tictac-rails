@@ -1,12 +1,14 @@
 // Configure your import map in config/importmap.rb. Read more: https://github.com/rails/importmap-rails
 import "@hotwired/turbo-rails"
 import "controllers"
+
 import jquery from "jquery"
 window.jQuery = jquery
 window.$ = jquery
 
 
 let pollingInterval;
+let currentBoardId = null;
 $(
     ()=>{ //can write jquery from here only: after every element loaded
 
@@ -14,17 +16,30 @@ $(
         function fetchGameState() {
             $.getJSON("/", (data)=>{
                 
+                if (data.id != currentBoardId){
+                    currentBoardId = data.id; //update
+                    fetchGameState();
+                }
+
                 data.board.forEach((value,index) => {
                     $(`#${index}`).text(value); //update each cell
                 });
+                
+                //after gameover
+                $("h4").html(`<span id="turn">${data.turn}</span>'s turn`)
 
                 $("#turn").text(data.turn); //turn display
+
+                //change
+                $("#hidden").val(data.id)
+
+                // $("#hidden").on("change").getJSON("/")
 
                 if(data.won){
                     // $("h4").text(`Game Over. Won by ${data.won}`)
                     $("h4").text(`Game Over. Won by ${data.won}`);
                     $("#board").off("click"); // Disable further clicks on the board
-                    clearInterval(pollingInterval) //stop polling on gameover;
+                    // clearInterval(pollingInterval) //stop polling on gameover;
                 }
             })
         }
@@ -69,6 +84,7 @@ $(
 
                 // Restart polling after starting a new game
                 clearInterval(pollingInterval);
+                currentBoardId = data.id; 
                 pollingInterval = setInterval(fetchGameState, 2000);
 
             })
